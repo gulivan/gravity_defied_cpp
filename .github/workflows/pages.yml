@@ -36,6 +36,18 @@ jobs:
           cmake --build build-web --target GravityDefied
           mkdir -p pages
           cp build-web/GravityDefied.html pages/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          index = Path("pages/index.html")
+          html = index.read_text()
+          patched = html.replace(
+              '<script async src=GravityDefied.js></script>',
+              '<script src="GravityDefied.js"></script>',
+          )
+          if patched == html:
+              raise SystemExit("GravityDefied.js async script tag was not found")
+          index.write_text(patched)
+          PY
           cp build-web/GravityDefied.js pages/
           cp build-web/GravityDefied.wasm pages/
 

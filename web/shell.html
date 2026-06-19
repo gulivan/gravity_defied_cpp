@@ -89,6 +89,12 @@
     var statusElement = document.getElementById('status');
     var canvasElement = document.getElementById('canvas');
 
+    function showError(prefix, error) {
+      var message = error && (error.stack || error.message || error.reason || error);
+      statusElement.textContent = prefix + ': ' + message;
+      statusElement.style.color = '#ff9b9b';
+    }
+
     var Module = {
       canvas: canvasElement,
       print: function(text) {
@@ -96,14 +102,28 @@
       },
       printErr: function(text) {
         console.error(text);
+        if (text) {
+          statusElement.textContent = text;
+        }
       },
       setStatus: function(text) {
         statusElement.textContent = text || 'Ready';
+      },
+      onAbort: function(reason) {
+        showError('Aborted', reason);
       },
       onRuntimeInitialized: function() {
         canvasElement.focus();
       }
     };
+
+    window.addEventListener('error', function(event) {
+      showError('Error', event.error || event.message);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      showError('Unhandled rejection', event.reason);
+    });
 
     window.addEventListener('keydown', function(event) {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape', ' '].includes(event.key)) {
