@@ -12,11 +12,13 @@ if(WIN32)
     )
 endif()
 
-find_package(PkgConfig REQUIRED)
+if(NOT EMSCRIPTEN)
+    find_package(PkgConfig REQUIRED)
 
-pkg_search_module(SDL2 REQUIRED IMPORTED_TARGET sdl2)
-pkg_search_module(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
-pkg_search_module(SDL2_IMAGE REQUIRED IMPORTED_TARGET SDL2_image)
+    pkg_search_module(SDL2 REQUIRED IMPORTED_TARGET sdl2)
+    pkg_search_module(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
+    pkg_search_module(SDL2_IMAGE REQUIRED IMPORTED_TARGET SDL2_image)
+endif()
 
 # Create a sources variable with a link to all cpp files to compile
 set(SOURCES
@@ -79,19 +81,40 @@ add_executable(GravityDefied ${SOURCES})
 target_compile_features(GravityDefied PRIVATE cxx_std_17)
 target_compile_options(GravityDefied PRIVATE -Wall -Wextra)
 
-target_include_directories(GravityDefied PRIVATE
-                           ${SDL2_INCLUDE_DIRS}
-                           ${SDL2_TTF_INCLUDE_DIRS}
-                           ${SDL2_IMAGE_INCLUDE_DIRS})
+if(NOT EMSCRIPTEN)
+    target_include_directories(GravityDefied PRIVATE
+                               ${SDL2_INCLUDE_DIRS}
+                               ${SDL2_TTF_INCLUDE_DIRS}
+                               ${SDL2_IMAGE_INCLUDE_DIRS})
 
-target_link_directories(GravityDefied PRIVATE
-                        ${SDL2_LIBRARY_DIRS}
-                        ${SDL2_TTF_LIBRARY_DIRS}
-                        ${SDL2_IMAGE_LIBRARY_DIRS})
+    target_link_directories(GravityDefied PRIVATE
+                            ${SDL2_LIBRARY_DIRS}
+                            ${SDL2_TTF_LIBRARY_DIRS}
+                            ${SDL2_IMAGE_LIBRARY_DIRS})
+endif()
 
 set_target_properties(GravityDefied PROPERTIES LINK_FLAGS_RELEASE -s)
 
-if(WIN32)
+if(EMSCRIPTEN)
+    set_target_properties(GravityDefied PROPERTIES SUFFIX ".html")
+
+    target_compile_options(GravityDefied PRIVATE -fexceptions)
+    target_link_options(GravityDefied PRIVATE
+                        -fexceptions
+                        -sDISABLE_EXCEPTION_CATCHING=0
+                        -sASYNCIFY=1
+                        -sALLOW_MEMORY_GROWTH=1
+                        -sEXIT_RUNTIME=0
+                        -sFORCE_FILESYSTEM=1
+                        -sUSE_SDL=2
+                        -sUSE_SDL_IMAGE=2
+                        "-sSDL2_IMAGE_FORMATS=[\"png\"]"
+                        -sUSE_SDL_TTF=2
+                        --shell-file
+                        "${CMAKE_SOURCE_DIR}/web/shell.html")
+
+    target_link_libraries(GravityDefied Assets::Assets)
+elseif(WIN32)
     target_link_options(GravityDefied PRIVATE -static -mwindows)
     target_link_libraries(GravityDefied 
                          ${SDL2_STATIC_LIBRARIES} 

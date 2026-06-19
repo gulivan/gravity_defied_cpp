@@ -7,6 +7,10 @@
 #include <numeric>
 #include <cstring>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef WIN32
 #include <libgen.h>
 #else
@@ -17,6 +21,28 @@
 #include "RecordStoreException.h"
 #include "../utils/FileStream.h"
 #include "../utils/String.h"
+
+#ifdef __EMSCRIPTEN__
+EM_ASYNC_JS(void, syncRecordStoreFs, (int populate), {
+    if (!Module.gravityDefiedRecordStoreMounted) {
+        if (!FS.analyzePath('/gravity_defied').exists) {
+            FS.mkdir('/gravity_defied');
+        }
+        FS.mount(IDBFS, {}, '/gravity_defied');
+        Module.gravityDefiedRecordStoreMounted = true;
+    }
+
+    await new Promise((resolve, reject) => {
+        FS.syncfs(!!populate, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+});
+#endif
 
 RecordStore::RecordStore(std::filesystem::path filePath, RecordEnumerationImpl* records)
 {
@@ -60,6 +86,9 @@ void RecordStore::save()
 {
     FileStream outStream(filePath, std::ios::out | std::ios::binary);
     records->serialize(&outStream);
+#ifdef __EMSCRIPTEN__
+    syncRecordStoreFs(0);
+#endif
 }
 
 RecordEnumerationImpl* RecordStore::load(std::filesystem::path filePath)
@@ -103,8 +132,11 @@ std::vector<std::string> RecordStore::listRecordStores()
 {
     std::vector<std::string> result;
 
-    for (const auto& entry : recordStoreDir)
-        result.push_back(entry.filename().string());
+    if (std::filesystem::exists(recordStoreDir)) {
+        for (const auto& entry : std::filesystem::directory_iterator(recordStoreDir)) {
+            result.push_back(entry.path().filename().string());
+        }
+    }
 
     log("listRecordStores() = {" + String::join(result, ", ") + "}");
 
@@ -114,7 +146,11 @@ std::vector<std::string> RecordStore::listRecordStores()
 void RecordStore::deleteRecordStore(std::string name)
 {
     log("deleteRecordStore(" + name + ")");
-    throw std::runtime_error("deleteRecordStore is not implemented");
+    opened.erase(name);
+    std::filesystem::remove(recordStoreDir / std::filesystem::path(name));
+#ifdef __EMSCRIPTEN__
+    syncRecordStoreFs(0);
+#endif
 }
 
 void RecordStore::log(std::string s)
@@ -124,7 +160,10 @@ void RecordStore::log(std::string s)
 
 void RecordStore::setRecordStoreDir([[maybe_unused]] const char* progName)
 {
-#ifdef WIN32
+#ifdef __EMSCRIPTEN__
+    syncRecordStoreFs(1);
+    recordStoreDir = std::filesystem::path("/gravity_defied") / "recordStore";
+#elif defined(WIN32)
     const char* base = dirname(strdup(progName));
     recordStoreDir = std::filesystem::path(base) / "recordStore";
 #else

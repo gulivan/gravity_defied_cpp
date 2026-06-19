@@ -8,6 +8,10 @@ This is the C++ & SDL2 port of Gravity Defied, which includes all the features o
 
 ***This Project is not associated with Codebrew Software in any fashion. All rights to the original Gravity Defied, it's name, logotype, brand and all that stuff belong to Codebrew Software.***
 
+## WebAssembly
+
+The game can be built as a static WebAssembly bundle for browser hosting, including GitHub Pages. See [docs/WEBASSEMBLY.md](docs/WEBASSEMBLY.md).
+
 # Authors
 
 ### Gravity Defied Cpp authors
