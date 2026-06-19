@@ -99,7 +99,12 @@ if(EMSCRIPTEN)
     set_target_properties(GravityDefied PROPERTIES SUFFIX ".html")
 
     target_include_directories(GravityDefied PRIVATE "${CMAKE_SOURCE_DIR}/web/compat")
-    target_compile_options(GravityDefied PRIVATE -fexceptions)
+    target_compile_options(GravityDefied PRIVATE
+                           -fexceptions
+                           -sUSE_SDL=2
+                           -sUSE_SDL_IMAGE=2
+                           "-sSDL2_IMAGE_FORMATS=[\"png\"]"
+                           -sUSE_SDL_TTF=2)
     target_link_options(GravityDefied PRIVATE
                         -fexceptions
                         -sDISABLE_EXCEPTION_CATCHING=0
