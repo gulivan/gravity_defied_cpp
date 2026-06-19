@@ -35,10 +35,19 @@ CanvasImpl::CanvasImpl(Canvas* canvas)
         throw std::runtime_error(SDL_GetError());
     }
 
+#ifdef __EMSCRIPTEN__
+    renderer = SDL_CreateRenderer(
+        window, -1, SDL_RENDERER_SOFTWARE);
+#else
     renderer = SDL_CreateRenderer(
         window, -1, SDL_RENDERER_ACCELERATED);
+#endif
 
     if (!renderer) {
+        throw std::runtime_error(SDL_GetError());
+    }
+
+    if (SDL_RenderSetLogicalSize(renderer, width, height) != 0) {
         throw std::runtime_error(SDL_GetError());
     }
 

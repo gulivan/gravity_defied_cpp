@@ -8,6 +8,8 @@
 #include "lcdui/CanvasImpl.h"
 #include "rms/RecordStore.h"
 
+#include <iostream>
+
 bool Micro::field_249 = false;
 int Micro::gameLoadingStateStage = 0;
 
@@ -270,6 +272,11 @@ void Micro::run()
 
             var10000 = field_249;
         } catch (std::exception& var15) {
+            static bool reportedUpdateException = false;
+            if (!reportedUpdateException) {
+                std::cerr << "Game update exception: " << var15.what() << std::endl;
+                reportedUpdateException = true;
+            }
             continue;
         }
 
@@ -296,6 +303,11 @@ void Micro::run()
 
             gameCanvas->repaint();
         } catch (std::exception& var14) {
+            static bool reportedRenderException = false;
+            if (!reportedRenderException) {
+                std::cerr << "Game render exception: " << var14.what() << std::endl;
+                reportedRenderException = true;
+            }
         }
     }
 
