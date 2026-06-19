@@ -116,6 +116,7 @@ if(EMSCRIPTEN)
                         -sUSE_SDL_IMAGE=2
                         "-sSDL2_IMAGE_FORMATS=[\"png\"]"
                         -sUSE_SDL_TTF=2
+                        -lidbfs.js
                         --shell-file
                         "${CMAKE_SOURCE_DIR}/web/shell.html")
 
