@@ -24,18 +24,63 @@
 
 #ifdef __EMSCRIPTEN__
 EM_ASYNC_JS(void, syncRecordStoreFs, (int populate), {
+    if (Module.gravityDefiedRecordStorePersistenceDisabled) {
+        return;
+    }
+
+    if (typeof IDBFS === 'undefined') {
+        console.warn('IDBFS is unavailable; record store persistence is disabled.');
+        Module.gravityDefiedRecordStorePersistenceDisabled = true;
+        return;
+    }
+
+    try {
+        if (!globalThis.indexedDB) {
+            console.warn('IndexedDB is unavailable; record store persistence is disabled.');
+            Module.gravityDefiedRecordStorePersistenceDisabled = true;
+            return;
+        }
+    } catch (err) {
+        console.warn('IndexedDB is blocked; record store persistence is disabled.', err);
+        Module.gravityDefiedRecordStorePersistenceDisabled = true;
+        return;
+    }
+
     if (!Module.gravityDefiedRecordStoreMounted) {
         if (!FS.analyzePath('/gravity_defied').exists) {
             FS.mkdir('/gravity_defied');
         }
-        FS.mount(IDBFS, {}, '/gravity_defied');
+        try {
+            FS.mount(IDBFS, {}, '/gravity_defied');
+        } catch (err) {
+            console.warn('Could not mount IDBFS; record store persistence is disabled.', err);
+            Module.gravityDefiedRecordStorePersistenceDisabled = true;
+            return;
+        }
         Module.gravityDefiedRecordStoreMounted = true;
     }
 
     await new Promise((resolve, reject) => {
+        let settled = false;
+        const timeout = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                console.warn('Timed out syncing IDBFS; continuing with in-memory records.');
+                Module.gravityDefiedRecordStorePersistenceDisabled = true;
+                resolve();
+            }
+        }, populate ? 4000 : 1500);
+
         FS.syncfs(!!populate, (err) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timeout);
             if (err) {
-                reject(err);
+                console.warn('Could not sync IDBFS; continuing with in-memory records.', err);
+                Module.gravityDefiedRecordStorePersistenceDisabled = true;
+                resolve();
             } else {
                 resolve();
             }
