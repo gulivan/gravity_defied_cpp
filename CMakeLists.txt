@@ -98,6 +98,7 @@ set_target_properties(GravityDefied PROPERTIES LINK_FLAGS_RELEASE -s)
 if(EMSCRIPTEN)
     set_target_properties(GravityDefied PROPERTIES SUFFIX ".html")
 
+    target_include_directories(GravityDefied PRIVATE "${CMAKE_SOURCE_DIR}/web/compat")
     target_compile_options(GravityDefied PRIVATE -fexceptions)
     target_link_options(GravityDefied PRIVATE
                         -fexceptions
