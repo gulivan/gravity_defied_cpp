@@ -3,10 +3,22 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <iostream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#endif
+
 #include "Canvas.h"
+
+#ifdef __EMSCRIPTEN__
+namespace {
+constexpr const char* CanvasSelector = "#canvas";
+}
+#endif
 
 CanvasImpl::CanvasImpl(Canvas* canvas)
 {
@@ -23,6 +35,10 @@ CanvasImpl::CanvasImpl(Canvas* canvas)
     if (TTF_Init() == -1) {
         throw std::runtime_error(TTF_GetError());
     }
+
+#ifdef __EMSCRIPTEN__
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+#endif
 
     window = SDL_CreateWindow(
         0,
@@ -47,6 +63,10 @@ CanvasImpl::CanvasImpl(Canvas* canvas)
         throw std::runtime_error(SDL_GetError());
     }
 
+#ifdef __EMSCRIPTEN__
+    beginFrame();
+#endif
+
     if (SDL_RenderSetLogicalSize(renderer, width, height) != 0) {
         throw std::runtime_error(SDL_GetError());
     }
@@ -62,6 +82,35 @@ CanvasImpl::~CanvasImpl()
     SDL_Quit();
     IMG_Quit();
     TTF_Quit();
+}
+
+void CanvasImpl::beginFrame()
+{
+#ifdef __EMSCRIPTEN__
+    double cssWidth = 0.0;
+    double cssHeight = 0.0;
+    if (emscripten_get_element_css_size(CanvasSelector, &cssWidth, &cssHeight) != EMSCRIPTEN_RESULT_SUCCESS) {
+        return;
+    }
+
+    if (cssWidth <= 0.0 || cssHeight <= 0.0) {
+        return;
+    }
+
+    const double devicePixelRatio = std::max(1.0, emscripten_get_device_pixel_ratio());
+    const int pixelWidth = std::max(1, static_cast<int>(std::lround(cssWidth * devicePixelRatio)));
+    const int pixelHeight = std::max(1, static_cast<int>(std::lround(cssHeight * devicePixelRatio)));
+
+    int currentWidth = 0;
+    int currentHeight = 0;
+    SDL_GetWindowSize(window, &currentWidth, &currentHeight);
+
+    if (currentWidth != pixelWidth || currentHeight != pixelHeight) {
+        SDL_SetWindowSize(window, pixelWidth, pixelHeight);
+        emscripten_set_canvas_element_size(CanvasSelector, pixelWidth, pixelHeight);
+        SDL_RenderSetLogicalSize(renderer, width, height);
+    }
+#endif
 }
 
 void CanvasImpl::repaint()
