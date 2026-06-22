@@ -9,6 +9,7 @@
 #include <iostream>
 
 #ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 #include <emscripten/html5.h>
 #endif
 
@@ -97,9 +98,12 @@ void CanvasImpl::beginFrame()
         return;
     }
 
-    const double devicePixelRatio = std::max(1.0, emscripten_get_device_pixel_ratio());
-    const int pixelWidth = std::max(1, static_cast<int>(std::lround(cssWidth * devicePixelRatio)));
-    const int pixelHeight = std::max(1, static_cast<int>(std::lround(cssHeight * devicePixelRatio)));
+    const double resolutionScale = EM_ASM_DOUBLE({
+        const scale = Number(Module.gravityDefiedResolutionScale) || 1;
+        return Math.min(2, Math.max(0.75, scale));
+    });
+    const int pixelWidth = std::max(1, static_cast<int>(std::lround(cssWidth * resolutionScale)));
+    const int pixelHeight = std::max(1, static_cast<int>(std::lround(cssHeight * resolutionScale)));
 
     int currentWidth = 0;
     int currentHeight = 0;

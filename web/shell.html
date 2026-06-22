@@ -64,6 +64,23 @@
       white-space: nowrap;
     }
 
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #cfd2d8;
+      white-space: nowrap;
+    }
+
+    .controls select {
+      color: #f2f2f2;
+      background: #18191c;
+      border: 1px solid #34373d;
+      border-radius: 4px;
+      padding: 4px 24px 4px 8px;
+      font: inherit;
+    }
+
     @media (max-width: 640px) {
       .bar {
         align-items: flex-start;
@@ -71,7 +88,8 @@
         gap: 4px;
       }
 
-      .keys {
+      .keys,
+      .controls {
         white-space: normal;
       }
     }
@@ -84,12 +102,46 @@
     </div>
     <div class="bar">
       <div id="status">Downloading...</div>
+      <label class="controls">
+        Resolution
+        <select id="resolutionScale">
+          <option value="0.75">0.75x Fast</option>
+          <option value="1">1x Balanced</option>
+          <option value="1.5">1.5x Sharp</option>
+          <option value="2">2x Retina</option>
+        </select>
+      </label>
       <div class="keys">Arrow keys to ride. Enter selects. Escape goes back.</div>
     </div>
   </main>
   <script>
     var statusElement = document.getElementById('status');
     var canvasElement = document.getElementById('canvas');
+    var resolutionScaleElement = document.getElementById('resolutionScale');
+    var resolutionScaleStorageKey = 'gravityDefiedResolutionScale';
+
+    function getResolutionScale() {
+      var savedScale = 0;
+      try {
+        savedScale = Number(localStorage.getItem(resolutionScaleStorageKey));
+      } catch (error) {
+        savedScale = 0;
+      }
+
+      if ([0.75, 1, 1.5, 2].includes(savedScale)) {
+        return savedScale;
+      }
+      return 1;
+    }
+
+    function setResolutionScale(scale) {
+      Module.gravityDefiedResolutionScale = scale;
+      resolutionScaleElement.value = String(scale);
+      try {
+        localStorage.setItem(resolutionScaleStorageKey, String(scale));
+      } catch (error) {
+      }
+    }
 
     function showError(prefix, error) {
       var message = error && (error.stack || error.message || error.reason || error);
@@ -99,6 +151,7 @@
 
     var Module = {
       canvas: canvasElement,
+      gravityDefiedResolutionScale: getResolutionScale(),
       print: function(text) {
         console.log(text);
       },
@@ -118,6 +171,12 @@
         canvasElement.focus();
       }
     };
+
+    resolutionScaleElement.value = String(Module.gravityDefiedResolutionScale);
+    resolutionScaleElement.addEventListener('change', function(event) {
+      setResolutionScale(Number(event.target.value));
+      canvasElement.focus();
+    });
 
     canvasElement.addEventListener('pointerdown', function() {
       canvasElement.focus();
