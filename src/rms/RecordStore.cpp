@@ -87,6 +87,44 @@ EM_ASYNC_JS(void, syncRecordStoreFs, (int populate), {
         });
     });
 });
+
+EM_JS(void, persistRecordStoreFs, (), {
+    if (Module.gravityDefiedRecordStorePersistenceDisabled || !Module.gravityDefiedRecordStoreMounted) {
+        return;
+    }
+
+    Module.gravityDefiedRecordStorePersistQueued = true;
+
+    if (!Module.gravityDefiedFlushRecordStoreFs) {
+        Module.gravityDefiedFlushRecordStoreFs = () => {
+            if (Module.gravityDefiedRecordStorePersistenceDisabled || !Module.gravityDefiedRecordStoreMounted) {
+                Module.gravityDefiedRecordStorePersistQueued = false;
+                Module.gravityDefiedRecordStorePersistRunning = false;
+                return;
+            }
+
+            if (Module.gravityDefiedRecordStorePersistRunning || !Module.gravityDefiedRecordStorePersistQueued) {
+                return;
+            }
+
+            Module.gravityDefiedRecordStorePersistQueued = false;
+            Module.gravityDefiedRecordStorePersistRunning = true;
+            FS.syncfs(false, (err) => {
+                Module.gravityDefiedRecordStorePersistRunning = false;
+                if (err) {
+                    console.warn('Could not persist IDBFS records in the background.', err);
+                }
+                if (Module.gravityDefiedRecordStorePersistQueued) {
+                    setTimeout(Module.gravityDefiedFlushRecordStoreFs, 0);
+                }
+            });
+        };
+    }
+
+    if (!Module.gravityDefiedRecordStorePersistRunning) {
+        setTimeout(Module.gravityDefiedFlushRecordStoreFs, 0);
+    }
+});
 #endif
 
 RecordStore::RecordStore(std::filesystem::path filePath, RecordEnumerationImpl* records)
@@ -132,7 +170,7 @@ void RecordStore::save()
     FileStream outStream(filePath, std::ios::out | std::ios::binary);
     records->serialize(&outStream);
 #ifdef __EMSCRIPTEN__
-    syncRecordStoreFs(0);
+    persistRecordStoreFs();
 #endif
 }
 
@@ -194,7 +232,7 @@ void RecordStore::deleteRecordStore(std::string name)
     opened.erase(name);
     std::filesystem::remove(recordStoreDir / std::filesystem::path(name));
 #ifdef __EMSCRIPTEN__
-    syncRecordStoreFs(0);
+    persistRecordStoreFs();
 #endif
 }
 
